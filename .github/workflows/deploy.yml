@@ -45,7 +45,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: terraform plan -out=tfplan -var="skip_existing_resources=true"
+        run: terraform plan -out=tfplan
 
       # Step 6: Apply Remaining Resources
       - name: Apply Remaining Resources
@@ -77,7 +77,6 @@ jobs:
         run: |
           aws s3 cp files/SF_HOMELESS_ANXIETY.csv s3://your-existing-dataset-bucket/raw/SF_HOMELESS_ANXIETY.csv
           aws s3 cp files/SF_HOMELESS_DEMOGRAPHICS.csv s3://your-existing-dataset-bucket/raw/SF_HOMELESS_DEMOGRAPHICS.csv
-
 
          
 # name: Deploy Infrastructure
