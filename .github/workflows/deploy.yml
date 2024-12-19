@@ -1,4 +1,4 @@
-name: Deploy Infrastructure Resources Only
+name: Deploy Remaining Infrastructure Resources
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy Infrastructure Resources
+    name: Deploy Remaining Infrastructure Resources
     runs-on: ubuntu-latest
 
     steps:
@@ -23,7 +23,7 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: aws sts get-caller-identity
 
-      # Step 3: Set Up Terraform
+      # Step 3: Set up Terraform
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
@@ -38,17 +38,17 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: terraform init -reconfigure
 
-      # Step 5: Plan Terraform Resources
-      - name: Plan Terraform Resources
+      # Step 5: Plan Remaining Resources
+      - name: Plan Remaining Resources
         working-directory: terraform/infrastructure
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: terraform plan -out=tfplan
+        run: terraform plan -out=tfplan -var="skip_existing_resources=true"
 
-      # Step 6: Apply Terraform Resources
-      - name: Apply Terraform Resources
+      # Step 6: Apply Remaining Resources
+      - name: Apply Remaining Resources
         working-directory: terraform/infrastructure
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -56,7 +56,7 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: terraform apply -auto-approve tfplan
 
-      # Step 7: Upload Lambda Zip File (Optional if Already Deployed)
+      # Step 7: Upload Lambda Zip File
       - name: Upload Lambda Function
         working-directory: terraform/infrastructure
         env:
@@ -75,8 +75,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          aws s3 cp files/SF_HOMELESS_ANXIETY.csv s3://your-dataset-bucket/raw/SF_HOMELESS_ANXIETY.csv
-          aws s3 cp files/SF_HOMELESS_DEMOGRAPHICS.csv s3://your-dataset-bucket/raw/SF_HOMELESS_DEMOGRAPHICS.csv
+          aws s3 cp files/SF_HOMELESS_ANXIETY.csv s3://your-existing-dataset-bucket/raw/SF_HOMELESS_ANXIETY.csv
+          aws s3 cp files/SF_HOMELESS_DEMOGRAPHICS.csv s3://your-existing-dataset-bucket/raw/SF_HOMELESS_DEMOGRAPHICS.csv
+
 
          
 # name: Deploy Infrastructure
