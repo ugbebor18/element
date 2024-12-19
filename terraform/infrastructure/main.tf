@@ -94,8 +94,3 @@ resource "aws_apigatewayv2_stage" "default_stage" {
   name   = "$default"
   auto_deploy = true
 }
-
-output "api_gateway_url" {
-  value       = aws_apigatewayv2_stage.default_stage.invoke_url
-  description = "API Gateway URL for accessing merged dataset"
-}
