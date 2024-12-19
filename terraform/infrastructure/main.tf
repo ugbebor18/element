@@ -85,11 +85,3 @@ resource "aws_lambda_function" "merge_function" {
   }
 }
 
-# Outputs
-output "s3_dataset_bucket" {
-  value = aws_s3_bucket.datasets.bucket
-}
-
-output "lambda_function_name" {
-  value = aws_lambda_function.merge_function.function_name
-}
