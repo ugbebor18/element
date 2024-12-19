@@ -1,4 +1,4 @@
-name: Deploy Infrastructure and Lambda
+name: Deploy Infrastructure
 
 on:
   push:
@@ -6,49 +6,16 @@ on:
       - main
 
 jobs:
-  # Job 1: Backend Deployment
-  deploy-backend:
-    name: Deploy Backend
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Configure AWS Credentials
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: aws sts get-caller-identity
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.5.3
-
-      - name: Initialize Terraform Backend
-        working-directory: terraform/backend
-        run: terraform init -reconfigure
-
-      - name: Plan Backend Resources
-        working-directory: terraform/backend
-        run: terraform plan -out=backend.tfplan
-
-      - name: Apply Backend Resources
-        working-directory: terraform/backend
-        run: terraform apply backend.tfplan
-
-  # Job 2: Infrastructure and Lambda Deployment
   deploy-infra:
-    name: Deploy Infrastructure
+    name: Deploy Remaining Infrastructure
     runs-on: ubuntu-latest
-    needs: deploy-backend
 
     steps:
-      - name: Checkout Code
+      # Step 1: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v3
 
+      # Step 2: Configure AWS Credentials
       - name: Configure AWS Credentials
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -56,48 +23,39 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: aws sts get-caller-identity
 
+      # Step 3: Set up Terraform
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.3
 
-      - name: Initialize Terraform for Infrastructure
+      # Step 4: Initialize Terraform for Infrastructure
+      - name: Initialize Terraform
         working-directory: terraform/infrastructure
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
         run: terraform init -reconfigure
 
-      - name: Plan Infrastructure Resources
+      # Step 5: Plan Infrastructure Changes
+      - name: Plan Infrastructure Changes
         working-directory: terraform/infrastructure
-        run: terraform plan -out=infra.tfplan
-
-      - name: Apply Infrastructure Resources
-        working-directory: terraform/infrastructure
-        run: terraform apply infra.tfplan
-
-      - name: Package Lambda Function
-        run: |
-          zip lambda_function.zip lambda_function.py
-
-      - name: Deploy Lambda Function
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: |
-          aws lambda update-function-code \
-            --function-name merge-homeless-data \
-            --zip-file fileb://lambda_function.zip
+        run: terraform plan -out=infrastructure.tfplan
 
-      - name: Upload Files to S3
+      # Step 6: Apply Infrastructure Changes
+      - name: Apply Infrastructure Changes
+        working-directory: terraform/infrastructure
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: |
-          aws s3 cp files/SF_HOMELESS_ANXIETY.csv s3://friday-ugbebor-datasets/raw/SF_HOMELESS_ANXIETY.csv
-          aws s3 cp files/SF_HOMELESS_DEMOGRAPHICS.csv s3://friday-ugbebor-datasets/raw/SF_HOMELESS_DEMOGRAPHICS.csv
-
-
-          
+        run: terraform apply -auto-approve infrastructure.tfplan
+         
 # name: Deploy Infrastructure
 
 # on:
