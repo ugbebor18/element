@@ -10,12 +10,19 @@ resource "aws_s3_bucket" "datasets" {
   tags = {
     Name = "Dataset Bucket"
   }
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = [
+      tags,
+      acl
+    ]
+  }
 }
 
 # Lambda Execution Role
 resource "aws_iam_role" "lambda_exec" {
-  name = "lambda-exec-role"
-
+  name               = "lambda-exec-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -28,7 +35,19 @@ resource "aws_iam_role" "lambda_exec" {
       }
     ]
   })
+
+  tags = {
+    Name = "Lambda Execution Role"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = [
+      tags
+    ]
+  }
 }
+
 
 resource "aws_iam_role_policy" "lambda_policy" {
   role = aws_iam_role.lambda_exec.id

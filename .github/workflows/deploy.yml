@@ -56,28 +56,6 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: terraform apply -auto-approve tfplan
 
-      # Step 7: Upload Lambda Zip File
-      - name: Upload Lambda Function
-        working-directory: terraform/infrastructure
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: |
-          aws lambda update-function-code \
-            --function-name merge-homeless-data \
-            --zip-file fileb://lambda_function.zip
-
-      # Step 8: Upload CSV Files to S3
-      - name: Upload CSV Files to S3
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: |
-          aws s3 cp files/SF_HOMELESS_ANXIETY.csv s3://your-existing-dataset-bucket/raw/SF_HOMELESS_ANXIETY.csv
-          aws s3 cp files/SF_HOMELESS_DEMOGRAPHICS.csv s3://your-existing-dataset-bucket/raw/SF_HOMELESS_DEMOGRAPHICS.csv
-
          
 # name: Deploy Infrastructure
 
