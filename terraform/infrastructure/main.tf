@@ -1,25 +1,18 @@
 provider "aws" {
-  region = "us-east-1"
+  region = var.aws_region
 }
 
-resource "aws_lambda_function" "merge_function" {
-  function_name = "merge-homeless-data"
-  runtime       = "python3.9"
-  role          = aws_iam_role.lambda_exec.arn
-  handler       = "lambda_function.lambda_handler"
-  filename      = "${path.module}/lambda_function.zip"
-
-  environment {
-    variables = {
-      S3_BUCKET_NAME = "friday-ugbebor-datasets"
-    }
-  }
+# Dataset Bucket
+resource "aws_s3_bucket" "datasets" {
+  bucket = "friday-ugbebor-datasets"
+  acl    = "private"
 
   tags = {
-    Name = "Merge Function"
+    Name = "Dataset Bucket"
   }
 }
 
+# Lambda Execution Role
 resource "aws_iam_role" "lambda_exec" {
   name = "lambda-exec-role"
 
@@ -27,7 +20,7 @@ resource "aws_iam_role" "lambda_exec" {
     Version = "2012-10-17",
     Statement = [
       {
-        Effect = "Allow",
+        Effect    = "Allow",
         Principal = {
           Service = "lambda.amazonaws.com"
         },
@@ -37,10 +30,72 @@ resource "aws_iam_role" "lambda_exec" {
   })
 }
 
-resource "aws_s3_bucket" "datasets" {
-  bucket = "friday-ugbebor-datasets"
+resource "aws_iam_role_policy" "lambda_policy" {
+  role = aws_iam_role.lambda_exec.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect   = "Allow",
+        Action   = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Lambda Function
+resource "aws_lambda_function" "merge_function" {
+  function_name = "merge-homeless-data"
+  runtime       = "python3.9"
+  role          = aws_iam_role.lambda_exec.arn
+  handler       = "lambda_function.lambda_handler"
+  filename      = "lambda_function.zip"
+
+  environment {
+    variables = {
+      S3_BUCKET_NAME = aws_s3_bucket.datasets.id
+    }
+  }
 
   tags = {
-    Name = "Dataset Bucket"
+    Name = "Merge Function"
   }
+}
+
+# API Gateway
+resource "aws_apigatewayv2_api" "http_api" {
+  name          = "HomelessDataAPI"
+  protocol_type = "HTTP"
+}
+
+resource "aws_apigatewayv2_integration" "lambda_integration" {
+  api_id                = aws_apigatewayv2_api.http_api.id
+  integration_type      = "AWS_PROXY"
+  integration_uri       = aws_lambda_function.merge_function.invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "default_route" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /data"
+  target    = aws_apigatewayv2_integration.lambda_integration.id
+}
+
+resource "aws_apigatewayv2_stage" "default_stage" {
+  api_id = aws_apigatewayv2_api.http_api.id
+  name   = "$default"
+  auto_deploy = true
+}
+
+output "api_gateway_url" {
+  value       = aws_apigatewayv2_stage.default_stage.invoke_url
+  description = "API Gateway URL for accessing merged dataset"
 }
