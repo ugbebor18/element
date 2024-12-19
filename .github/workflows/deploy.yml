@@ -1,4 +1,4 @@
-name: Deploy Infrastructure
+name: Deploy Infrastructure Resources Only
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - main
 
 jobs:
-  deploy-infra:
-    name: Deploy Remaining Infrastructure
+  deploy:
+    name: Deploy Infrastructure Resources
     runs-on: ubuntu-latest
 
     steps:
@@ -23,13 +23,13 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: aws sts get-caller-identity
 
-      # Step 3: Set up Terraform
+      # Step 3: Set Up Terraform
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.3
 
-      # Step 4: Initialize Terraform for Infrastructure
+      # Step 4: Initialize Terraform
       - name: Initialize Terraform
         working-directory: terraform/infrastructure
         env:
@@ -38,23 +38,46 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: terraform init -reconfigure
 
-      # Step 5: Plan Infrastructure Changes
-      - name: Plan Infrastructure Changes
+      # Step 5: Plan Terraform Resources
+      - name: Plan Terraform Resources
         working-directory: terraform/infrastructure
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: terraform plan -out=infrastructure.tfplan
+        run: terraform plan -out=tfplan
 
-      # Step 6: Apply Infrastructure Changes
-      - name: Apply Infrastructure Changes
+      # Step 6: Apply Terraform Resources
+      - name: Apply Terraform Resources
         working-directory: terraform/infrastructure
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: terraform apply -auto-approve infrastructure.tfplan
+        run: terraform apply -auto-approve tfplan
+
+      # Step 7: Upload Lambda Zip File (Optional if Already Deployed)
+      - name: Upload Lambda Function
+        working-directory: terraform/infrastructure
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          aws lambda update-function-code \
+            --function-name merge-homeless-data \
+            --zip-file fileb://lambda_function.zip
+
+      # Step 8: Upload CSV Files to S3
+      - name: Upload CSV Files to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          aws s3 cp files/SF_HOMELESS_ANXIETY.csv s3://your-dataset-bucket/raw/SF_HOMELESS_ANXIETY.csv
+          aws s3 cp files/SF_HOMELESS_DEMOGRAPHICS.csv s3://your-dataset-bucket/raw/SF_HOMELESS_DEMOGRAPHICS.csv
+
          
 # name: Deploy Infrastructure
 
